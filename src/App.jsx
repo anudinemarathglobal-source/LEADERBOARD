@@ -308,14 +308,14 @@ const Stat = ({ label, value, warn }) => (
 const css = `
 :root{--bg:#0b1b3a;--card:#13294f;--line:#22406e;--txt:#eef3ff;--mut:#9fb3d6;--ok:#4ade80;--bad:#fb7185;--acc:#fbbf24}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif}
-.wrap{max-width:1600px;margin:0 auto;padding:10px 14px}
+.wrap{max-width:1600px;margin:0 auto;padding:14px 14px}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:2px 0 0;font-size:12px}
 .btn{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
 .btn.on{background:var(--acc);color:#222;border-color:var(--acc)}
 .err{background:#4c1d2b;border:1px solid var(--bad);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:10px 0}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
 .stat strong{font-size:20px;line-height:1.2}.bad{color:var(--bad)}.good{color:var(--ok)}
 .table{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-size:13px}
 .tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(9,.75fr);min-width:1100px;align-items:center;padding:5px 10px;border-top:1px solid var(--line);gap:6px}
