@@ -1,7 +1,8 @@
-   node_modules
-   dist
-   .env
-   .env.local
-   .vercel
-   __pycache__
-   service_account.json
+node_modules
+dist
+.env
+.env.local
+.vercel
+__pycache__
+service_account.json
+.venv
