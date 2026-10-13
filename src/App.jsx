@@ -131,7 +131,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const events = ["pointerdown", "keydown", "touchstart"];
+    const events = ["pointerdown", "mousedown", "click", "keydown", "touchstart", "touchend"];
     const handler = () => {
       unlockAudio();
       events.forEach((e) => window.removeEventListener(e, handler));
@@ -225,7 +225,7 @@ export default function App() {
           </p>
         </div>
         <button className={soundOn && audioReady ? "btn on" : "btn"} onClick={toggleSound}>
-          {!soundOn ? "🔇 Muted (click to unmute)" : audioReady ? "🔔 Sound on (click to mute)" : "🔊 Sound on – click anywhere to activate"}
+          {!soundOn ? "🔇 Muted (click to unmute)" : audioReady ? "🔔 Sound on (click to mute)" : "🔊 Sound on – click once to activate"}
         </button>
       </header>
 
@@ -234,7 +234,7 @@ export default function App() {
       <section className="stats">
         <Stat label="Today target" value={sum("target")} />
         <Stat label="Won" value={sum("won")} />
-        <Stat label="Target leads" value={sum("targetLeads")} />
+        {/* <Stat label="Target leads" value={sum("targetLeads")} /> */}
         <Stat label="Today leads" value={sum("todayLeads")} />
         <Stat label="Oud Al Salam" value={sum("oudAlSalam")} />
         <Stat label="Bahrain" value={sum("bahrain")} />
@@ -246,8 +246,10 @@ export default function App() {
       <div className="table">
         <div className="tr th">
           <span>#</span><span>Agent</span><span>Progress</span>
+          {/* <span>Target leads</span> */}
+          <span>Today leads</span>
           <span>Target</span><span>Won</span>
-          <span>Target leads</span><span>Today leads</span><span>From leads</span>
+          <span>From leads</span>
           <span>Qty</span><span>Oud Al Salam</span><span>Bahrain</span>
           <span>Remaining</span><span>Month backlog</span>
         </div>
@@ -259,10 +261,10 @@ export default function App() {
               <span className="rank">{["🥇", "🥈", "🥉"][i] || i + 1}</span>
               <span className="name">{r.agent}{done && " ✅"}</span>
               <span className="bar"><i style={{ width: pct + "%" }} /><b>{pct}%</b></span>
+              {/* <span>{r.targetLeads}</span> */}
+              <span>{r.todayLeads}</span>
               <span>{r.target}</span>
               <span>{r.won}</span>
-              <span>{r.targetLeads}</span>
-              <span>{r.todayLeads}</span>
               <span>{r.fromLeads}</span>
               <span className="qty">{r.qty}</span>
               <span>{r.oudAlSalam}</span>
@@ -305,22 +307,22 @@ const Stat = ({ label, value, warn }) => (
 const css = `
 :root{--bg:#0b1b3a;--card:#13294f;--line:#22406e;--txt:#eef3ff;--mut:#9fb3d6;--ok:#4ade80;--bad:#fb7185;--acc:#fbbf24}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif}
-.wrap{max-width:1200px;margin:0 auto;padding:24px}
+.wrap{max-width:1600px;margin:0 auto;padding:10px 14px}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-h1{margin:0;font-size:28px}.muted{color:var(--mut);margin:4px 0 0;font-size:13px}
-.btn{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600}
+h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:2px 0 0;font-size:12px}
+.btn{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
 .btn.on{background:var(--acc);color:#222;border-color:var(--acc)}
-.err{background:#4c1d2b;border:1px solid var(--bad);padding:12px;border-radius:10px;margin:16px 0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
-.stat strong{font-size:28px}.bad{color:var(--bad)}.good{color:var(--ok)}
-.table{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
-.tr{display:grid;grid-template-columns:50px 1.4fr 1.4fr repeat(10,.8fr);min-width:1250px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);gap:8px}
-.th{border:0;color:var(--mut);font-size:12px;text-transform:uppercase;background:#0e2244}
-.tr.done{background:rgba(74,222,128,.1)}.name{font-weight:700}.qty{font-weight:700;color:var(--acc)}
-.bar{position:relative;height:20px;background:#0b1b3a;border-radius:99px;overflow:hidden}
+.err{background:#4c1d2b;border:1px solid var(--bad);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:10px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
+.stat strong{font-size:20px;line-height:1.2}.bad{color:var(--bad)}.good{color:var(--ok)}
+.table{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-size:13px}
+.tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(10,.75fr);min-width:1100px;align-items:center;padding:5px 10px;border-top:1px solid var(--line);gap:6px}
+.th{border:0;color:var(--mut);font-size:11px;text-transform:uppercase;background:#0e2244}
+.tr.done{background:rgba(74,222,128,.1)}.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qty{font-weight:700;color:var(--acc)}
+.bar{position:relative;height:16px;background:#0b1b3a;border-radius:99px;overflow:hidden}
 .bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#3b82f6,var(--ok));border-radius:99px}
-.bar b{position:relative;font-size:11px;display:block;text-align:center;line-height:20px}
+.bar b{position:relative;font-size:10px;display:block;text-align:center;line-height:16px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:center;z-index:10}
 .modal{position:relative;background:var(--card);border:2px solid var(--acc);border-radius:20px;padding:32px;max-width:400px;text-align:center;animation:pop .35s}
 .close{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:#0b1b3a;color:var(--txt);cursor:pointer;font-size:14px;line-height:1}.close:hover{background:var(--bad)}
