@@ -318,7 +318,7 @@ h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:2px 0 0;font-size:12px
 .stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
 .stat strong{font-size:20px;line-height:1.2}.bad{color:var(--bad)}.good{color:var(--ok)}
 .table{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-size:13px}
-.tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(9,.75fr);min-width:1100px;align-items:center;padding:5px 10px;border-top:1px solid var(--line);gap:6px}
+.tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(9,.75fr);min-width:1100px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);gap:6px}
 .th{border:0;color:var(--mut);font-size:11px;text-transform:uppercase;background:#0e2244}
 .tr.done{background:rgba(74,222,128,.1)}.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qty{font-weight:700;color:var(--acc)}
 .bar{position:relative;height:16px;background:#0b1b3a;border-radius:99px;overflow:hidden}
