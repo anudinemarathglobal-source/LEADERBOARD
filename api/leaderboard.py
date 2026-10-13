@@ -5,10 +5,20 @@ from http.server import BaseHTTPRequestHandler
 SHEET_ID = "1EBoTv168l52h7geL02ZmXwyx02vpEM4Aj61p4NBh2kM"
 SHEET_NAME = "HOURLY"
 EXCLUDE = {"", "total"}
-COLS = {
-    "agent": "agent", "today target": "target", "orders": "won",
-    "order from leads": "fromLeads", "qty": "qty",
-    "remaining target": "remaining", "backlog": "totalBacklog",
+
+# field -> (exact header names to try in order, optional "contains" fallback)
+FIELDS = {
+    "agent": (["agent"], None),
+    "targetLeads": (["target leads"], "target lead"),
+    "todayLeads": (["today leads", "today lead", "lead", "leads"], None),
+    "target": (["today target"], None),
+    "won": (["orders"], None),
+    "fromLeads": (["order from leads"], None),
+    "qty": (["qty"], None),
+    "remaining": (["remaining target"], None),
+    "oudAlSalam": (["oud al salam count", "oud al salam"], "oud"),
+    "bahrain": (["bahrain count", "bahrain"], "bahrain"),
+    "totalBacklog": (["backlog"], None),
 }
 
 
@@ -17,6 +27,17 @@ def num(v):
         return float(str(v).replace(",", "").strip() or 0)
     except ValueError:
         return 0
+
+
+def find_col(head, exact, contains):
+    for n in exact:
+        if n in head:
+            return head.index(n)
+    if contains:
+        for i, h in enumerate(head):
+            if contains in h:
+                return i
+    return None
 
 
 def read_sheet():
@@ -29,7 +50,13 @@ def read_sheet():
     if h is None:
         raise ValueError("Header row with 'AGENT' not found")
     head = [" ".join(c.split()).lower() for c in values[h]]
-    idx = {f: head.index(n) for n, f in COLS.items() if n in head}
+    idx, missing = {}, []
+    for field, (exact, contains) in FIELDS.items():
+        i = find_col(head, exact, contains)
+        if i is None:
+            missing.append(field)
+        else:
+            idx[field] = i
     rows = []
     for r in values[h + 1:]:
         get = lambda f: r[idx[f]] if f in idx and idx[f] < len(r) else ""
@@ -37,21 +64,23 @@ def read_sheet():
         if not agent or agent.lower() in EXCLUDE:
             continue
         row = {"agent": agent}
-        for f in ("target", "won", "fromLeads", "qty", "remaining", "totalBacklog"):
-            row[f] = num(get(f))
+        for f in FIELDS:
+            if f != "agent":
+                row[f] = num(get(f))
         if row["target"] >= 0:  # keep agents whose target is 0
             rows.append(row)
-    return rows
+    return rows, missing
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            body, code = {"rows": read_sheet(), "updated": time.time()}, 200
+            rows, missing = read_sheet()
+            body, code = {"rows": rows, "missing": missing, "updated": time.time()}, 200
         except Exception as e:
             body, code = {"error": str(e)}, 500
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "s-maxage=30, stale-while-revalidate")
+        self.send_header("Cache-Control", "s-maxage=5, stale-while-revalidate=5")
         self.end_headers()
         self.wfile.write(json.dumps(body).encode())

@@ -3,32 +3,95 @@ import { useEffect, useRef, useState, useCallback } from "react";
 /* ---------- CONFIG ---------- */
 const API_URL = import.meta.env.VITE_API_URL || "/api/leaderboard";
 const POPUP_MS = 10 * 1000; // popup stays 10 seconds
-const REFRESH_MS = 60 * 1000; // poll every minute (sheet itself updates hourly)
+const REFRESH_MS = 10 * 1000; // poll every 10 seconds
 
 async function fetchSheet() {
   const res = await fetch(API_URL, { cache: "no-store" });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "API error");
+  if (json.missing?.length) console.warn("[leaderboard] sheet columns not found:", json.missing);
   return json.rows.map((r) => ({ ...r, remaining: Math.max(0, r.target - r.won) }));
 }
 
-/* ---------- SOUND (no audio file needed) ---------- */
-function playChime(ctx) {
+/* ---------- SOUND (synthesised, no audio file needed) ---------- */
+function noiseBuffer(ctx, seconds) {
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+// fanfare + crowd cheering + applause (~4 seconds)
+function playCheer(ctx) {
   if (!ctx) return;
-  const notes = [523.25, 659.25, 783.99, 1046.5];
-  notes.forEach((f, i) => {
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.9;
+  master.connect(ctx.destination);
+
+  // 1) fanfare
+  [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "triangle";
     o.frequency.value = f;
-    const t = ctx.currentTime + i * 0.15;
+    const t = now + i * 0.13;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.3, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-    o.connect(g).connect(ctx.destination);
+    g.gain.exponentialRampToValueAtTime(0.28, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (i === 6 ? 0.9 : 0.35));
+    o.connect(g).connect(master);
     o.start(t);
-    o.stop(t + 0.55);
+    o.stop(t + 1);
   });
+
+  // 2) crowd roar: band-passed noise that swells and fades
+  const roar = ctx.createBufferSource();
+  roar.buffer = noiseBuffer(ctx, 4);
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(700, now + 0.5);
+  bp.frequency.linearRampToValueAtTime(1500, now + 1.6);
+  bp.frequency.linearRampToValueAtTime(900, now + 3.8);
+  bp.Q.value = 0.7;
+  const rg = ctx.createGain();
+  rg.gain.setValueAtTime(0.0001, now + 0.5);
+  rg.gain.exponentialRampToValueAtTime(0.5, now + 1.3);
+  rg.gain.setValueAtTime(0.5, now + 2.4);
+  rg.gain.exponentialRampToValueAtTime(0.0001, now + 4);
+  roar.connect(bp).connect(rg).connect(master);
+  roar.start(now + 0.5);
+
+  // 3) "whoooo" cheers: two voices with vibrato and rising pitch
+  [0.7, 1.2].forEach((delay, k) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    o.type = "sawtooth";
+    const t = now + delay;
+    o.frequency.setValueAtTime(k ? 380 : 300, t);
+    o.frequency.exponentialRampToValueAtTime(k ? 640 : 520, t + 0.7);
+    lfo.frequency.value = 6; lg.gain.value = 12;
+    lfo.connect(lg).connect(o.frequency);
+    f.type = "bandpass"; f.frequency.value = 1100; f.Q.value = 2;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(f).connect(g).connect(master);
+    o.start(t); lfo.start(t);
+    o.stop(t + 1.2); lfo.stop(t + 1.2);
+  });
+
+  // 4) applause: lots of tiny random claps
+  const clap = noiseBuffer(ctx, 0.05);
+  for (let i = 0; i < 90; i++) {
+    const src = ctx.createBufferSource(), g = ctx.createGain(), hp = ctx.createBiquadFilter();
+    src.buffer = clap;
+    hp.type = "highpass"; hp.frequency.value = 1500 + Math.random() * 2500;
+    const t = now + 0.9 + Math.random() * 3;
+    const vol = 0.25 * (1 - (t - now - 0.9) / 3.5);
+    g.gain.setValueAtTime(Math.max(vol, 0.03), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    src.connect(hp).connect(g).connect(master);
+    src.start(t);
+  }
 }
 
 /* ---------- APP ---------- */
@@ -37,10 +100,12 @@ export default function App() {
   const [error, setError] = useState("");
   const [updated, setUpdated] = useState(null);
   const [queue, setQueue] = useState([]); // achievement popups
-  const [soundOn, setSoundOn] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);       // sound is ON by default
+  const [audioReady, setAudioReady] = useState(false); // browser has allowed audio yet?
   const audioRef = useRef(null);
-  const soundRef = useRef(false);
-  
+  const soundRef = useRef(true);
+  const pendingRef = useRef(false); // a cheer was due before audio was unlocked
+
   // local date (not UTC) so the reset happens at local midnight
   const localDay = () => {
     const d = new Date();
@@ -48,12 +113,40 @@ export default function App() {
   };
   const SEEN_PREFIX = "achieved-v3:";
 
-  const enableSound = () => {
-    audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    audioRef.current.resume();
-    soundRef.current = true;
-    setSoundOn(true);
-    playChime(audioRef.current); // test
+  // Browsers only allow audio after the user has interacted with the page once.
+  // Sound is ON from the start; the first click / key / touch anywhere unlocks it.
+  const unlockAudio = useCallback(() => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      audioRef.current.resume().then(() => {
+        setAudioReady(true);
+        if (pendingRef.current && soundRef.current) {
+          pendingRef.current = false;
+          playCheer(audioRef.current);
+        }
+      });
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const events = ["pointerdown", "keydown", "touchstart"];
+    const handler = () => {
+      unlockAudio();
+      events.forEach((e) => window.removeEventListener(e, handler));
+    };
+    events.forEach((e) => window.addEventListener(e, handler));
+    unlockAudio(); // works straight away if the browser already allows autoplay
+    return () => events.forEach((e) => window.removeEventListener(e, handler));
+  }, [unlockAudio]);
+
+  const toggleSound = () => {
+    const next = !soundRef.current;
+    soundRef.current = next;
+    setSoundOn(next);
+    unlockAudio();
+    if (next) setTimeout(() => playCheer(audioRef.current), 100); // preview
   };
 
   const load = useCallback(async () => {
@@ -85,7 +178,10 @@ export default function App() {
       if (fresh.length) {
         try { localStorage.setItem(key, JSON.stringify([...seen, ...fresh.map((f) => f.agent)])); } catch {}
         setQueue((q) => [...q, ...fresh]);
-        if (soundRef.current) playChime(audioRef.current);
+        if (soundRef.current) {
+          if (audioRef.current && audioRef.current.state === "running") playCheer(audioRef.current);
+          else pendingRef.current = true; // play as soon as the browser allows audio
+        }
       }
     } catch (e) {
       setError(e.message + " — is the backend (server.py) running?");
@@ -125,11 +221,11 @@ export default function App() {
         <div>
           <h1>🏆 Sales Leaderboard</h1>
           <p className="muted">
-            {updated ? `Last synced ${updated.toLocaleTimeString()}` : "Loading…"} · auto-refresh every minute
+            {updated ? `Last synced ${updated.toLocaleTimeString()}` : "Loading…"} · auto-refresh every 10 seconds
           </p>
         </div>
-        <button className={soundOn ? "btn on" : "btn"} onClick={enableSound} disabled={soundOn}>
-          {soundOn ? "🔔 Sound on" : "🔇 Enable sound"}
+        <button className={soundOn && audioReady ? "btn on" : "btn"} onClick={toggleSound}>
+          {!soundOn ? "🔇 Muted (click to unmute)" : audioReady ? "🔔 Sound on (click to mute)" : "🔊 Sound on – click anywhere to activate"}
         </button>
       </header>
 
@@ -138,6 +234,10 @@ export default function App() {
       <section className="stats">
         <Stat label="Today target" value={sum("target")} />
         <Stat label="Won" value={sum("won")} />
+        <Stat label="Target leads" value={sum("targetLeads")} />
+        <Stat label="Today leads" value={sum("todayLeads")} />
+        <Stat label="Oud Al Salam" value={sum("oudAlSalam")} />
+        <Stat label="Bahrain" value={sum("bahrain")} />
         <Stat label="Qty" value={sum("qty")} />
         <Stat label="Remaining" value={sum("remaining")} warn />
         <Stat label="Month backlog" value={sum("totalBacklog")} warn />
@@ -146,8 +246,10 @@ export default function App() {
       <div className="table">
         <div className="tr th">
           <span>#</span><span>Agent</span><span>Progress</span>
-          <span>Target</span><span>Won</span><span>From leads</span>
-          <span>Qty</span><span>Remaining</span><span>Month backlog</span>
+          <span>Target</span><span>Won</span>
+          <span>Target leads</span><span>Today leads</span><span>From leads</span>
+          <span>Qty</span><span>Oud Al Salam</span><span>Bahrain</span>
+          <span>Remaining</span><span>Month backlog</span>
         </div>
         {ranked.map((r, i) => {
           const pct = r.target > 0 ? Math.min(100, Math.round((r.won / r.target) * 100)) : 0;
@@ -159,8 +261,12 @@ export default function App() {
               <span className="bar"><i style={{ width: pct + "%" }} /><b>{pct}%</b></span>
               <span>{r.target}</span>
               <span>{r.won}</span>
+              <span>{r.targetLeads}</span>
+              <span>{r.todayLeads}</span>
               <span>{r.fromLeads}</span>
               <span className="qty">{r.qty}</span>
+              <span>{r.oudAlSalam}</span>
+              <span>{r.bahrain}</span>
               <span className={r.remaining > 0 ? "bad" : "good"}>{r.remaining}</span>
               <span>{r.totalBacklog}</span>
             </div>
@@ -205,11 +311,11 @@ h1{margin:0;font-size:28px}.muted{color:var(--mut);margin:4px 0 0;font-size:13px
 .btn{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600}
 .btn.on{background:var(--acc);color:#222;border-color:var(--acc)}
 .err{background:#4c1d2b;border:1px solid var(--bad);padding:12px;border-radius:10px;margin:16px 0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
 .stat strong{font-size:28px}.bad{color:var(--bad)}.good{color:var(--ok)}
 .table{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
-.tr{display:grid;grid-template-columns:50px 1.5fr 1.6fr repeat(6,.8fr);min-width:900px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);gap:8px}
+.tr{display:grid;grid-template-columns:50px 1.4fr 1.4fr repeat(10,.8fr);min-width:1250px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);gap:8px}
 .th{border:0;color:var(--mut);font-size:12px;text-transform:uppercase;background:#0e2244}
 .tr.done{background:rgba(74,222,128,.1)}.name{font-weight:700}.qty{font-weight:700;color:var(--acc)}
 .bar{position:relative;height:20px;background:#0b1b3a;border-radius:99px;overflow:hidden}
