@@ -81,6 +81,6 @@ class handler(BaseHTTPRequestHandler):
             body, code = {"error": str(e)}, 500
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "s-maxage=5, stale-while-revalidate=5")
+        self.send_header("Cache-Control", "s-maxage=10, stale-while-revalidate=5")
         self.end_headers()
         self.wfile.write(json.dumps(body).encode())
