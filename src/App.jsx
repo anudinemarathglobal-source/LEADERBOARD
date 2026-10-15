@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 /* ---------- CONFIG ---------- */
 const API_URL = import.meta.env.VITE_API_URL || "/api/leaderboard";
 const POPUP_MS = 10 * 1000; // popup stays 10 seconds
+const RESET_HOUR = 11; // announced list resets daily at 11:00 AM (24h clock, local time)
 const REFRESH_MS = 10 * 1000; // poll every 10 seconds
 
 async function fetchSheet() {
@@ -106,9 +107,10 @@ export default function App() {
   const soundRef = useRef(true);
   const pendingRef = useRef(false); // a cheer was due before audio was unlocked
 
-  // local date (not UTC) so the reset happens at local midnight
+  // "Sales day" key: the announced list resets every day at RESET_HOUR (11 AM local time),
+  // not at midnight. Before 11:00 we still count as the previous day.
   const localDay = () => {
-    const d = new Date();
+    const d = new Date(Date.now() - RESET_HOUR * 60 * 60 * 1000);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
   const SEEN_PREFIX = "achieved-v3:";
@@ -157,7 +159,7 @@ export default function App() {
       setUpdated(new Date());
       setError("");
 
-      // --- who has already been announced today? (resets every new day) ---
+      // --- who has already been announced in the current sales day? (resets at RESET_HOUR) ---
       const key = SEEN_PREFIX + localDay();
       let seen = [];
       try { seen = JSON.parse(localStorage.getItem(key) || "[]"); } catch {}
@@ -168,21 +170,34 @@ export default function App() {
           .forEach((k) => localStorage.removeItem(k));
       } catch {}
 
-      // --- only NEWLY achieved agents ---
-      const fresh = data.filter(
-        (r) => r.target > 0 && r.won >= r.target && !seen.includes(r.agent)
+      // --- who is at/above target RIGHT NOW (checked on every sync) ---
+      const achievedNow = new Set(
+        data.filter((r) => r.target > 0 && r.won >= r.target).map((r) => r.agent)
       );
+
+      // forget agents who have dropped back below target, so they are announced
+      // again if they reach it again later the same day
+      const stillAchieved = seen.filter((a) => achievedNow.has(a));
+      const removed = seen.filter((a) => !achievedNow.has(a));
+
+      // only NEWLY achieved agents get a popup
+      const fresh = data.filter((r) => achievedNow.has(r.agent) && !stillAchieved.includes(r.agent));
+      const nextSeen = [...stillAchieved, ...fresh.map((f) => f.agent)];
+
+      if (removed.length || fresh.length) {
+        try { localStorage.setItem(key, JSON.stringify(nextSeen)); } catch {}
+      }
       console.log(
-        "[leaderboard] synced",
-        data.length, "agents | already announced:", seen, "| new:", fresh.map((f) => f.agent)
+        "[leaderboard] synced", data.length, "agents |",
+        "announced:", nextSeen, "| new:", fresh.map((f) => f.agent), "| removed (below target):", removed
       );
-      if (fresh.length) {
-        try { localStorage.setItem(key, JSON.stringify([...seen, ...fresh.map((f) => f.agent)])); } catch {}
-        setQueue((q) => [...q, ...fresh]);
-        if (soundRef.current) {
-          if (audioRef.current && audioRef.current.state === "running") playCheer(audioRef.current);
-          else pendingRef.current = true; // play as soon as the browser allows audio
-        }
+
+      // drop queued popups of agents who are no longer at target, then add the new ones
+      setQueue((q) => [...q.filter((p) => achievedNow.has(p.agent)), ...fresh]);
+
+      if (fresh.length && soundRef.current) {
+        if (audioRef.current && audioRef.current.state === "running") playCheer(audioRef.current);
+        else pendingRef.current = true; // play as soon as the browser allows audio
       }
     } catch (e) {
       setError(e.message + " — is the backend (server.py) running?");
@@ -308,14 +323,14 @@ const Stat = ({ label, value, warn }) => (
 const css = `
 :root{--bg:#0b1b3a;--card:#13294f;--line:#22406e;--txt:#eef3ff;--mut:#9fb3d6;--ok:#4ade80;--bad:#fb7185;--acc:#fbbf24}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif}
-.wrap{max-width:1600px;margin:0 auto;padding:14px 14px}
+.wrap{max-width:1600px;margin:0 auto;padding:10px 14px}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:2px 0 0;font-size:12px}
+h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:4px 0 0;font-size:12px}
 .btn{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
 .btn.on{background:var(--acc);color:#222;border-color:var(--acc)}
 .err{background:#4c1d2b;border:1px solid var(--bad);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:14px 0}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
 .stat strong{font-size:20px;line-height:1.2}.bad{color:var(--bad)}.good{color:var(--ok)}
 .table{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-size:13px}
 .tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(9,.75fr);min-width:1100px;align-items:center;padding:10px 10px;border-top:1px solid var(--line);gap:6px}
