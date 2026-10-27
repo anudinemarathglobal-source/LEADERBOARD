@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler
 
 SHEET_ID = "1EBoTv168l52h7geL02ZmXwyx02vpEM4Aj61p4NBh2kM"
 SHEET_NAME = "HOURLY"
-EXCLUDE = {"agent", "night shift", "agents","NIGHT SHIFT", "total"}
+EXCLUDE = {"agent", "night shift", "agents","NIGHT SHIFT", "total", "grand total"}
 
 # field -> (exact header names to try in order, optional "contains" fallback)
 FIELDS = {
