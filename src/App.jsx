@@ -256,8 +256,8 @@ export default function App() {
         <Stat label="Bahrain" value={sum("bahrain")} />
         <Stat label="Qty" value={sum("qty")} />
         <Stat label="Remaining" value={sum("remaining")} warn />
-        <Stat label="Month Target" value={sum("target wons")} warn />
-        <Stat label="Month Achieved" value={sum("converted")} warn />
+        <Stat label="Month Target" value={sum("monthTarget")} warn />
+        <Stat label="Month Achieved" value={sum("monthAchieved")} warn />
         <Stat label="Month backlog" value={sum("totalBacklog")} warn />
       </section>
 
@@ -269,7 +269,7 @@ export default function App() {
           <span>Target</span><span>Won</span>
           <span>From leads</span>
           <span>Qty</span><span>Oud Al Salam</span><span>Bahrain</span>
-          <span>Remaining</span><span>Month backlog</span>
+          <span>Remaining</span><span>Month Target</span><span>Month Achieved</span><span>Month backlog</span>
         </div>
         {ranked.map((r, i) => {
           const pct = r.target > 0 ? Math.min(100, Math.round((r.won / r.target) * 100)) : 0;
@@ -288,8 +288,8 @@ export default function App() {
               <span>{r.oudAlSalam}</span>
               <span>{r.bahrain}</span>
               <span className={r.remaining > 0 ? "bad" : "good"}>{r.remaining}</span>
-              <span>{r.targetwons}</span>
-              <span>{r.converted}</span>
+              <span>{r.monthTarget}</span>
+              <span>{r.monthAchieved}</span>
               <span>{r.totalBacklog}</span>
             </div>
           );
@@ -337,7 +337,7 @@ h1{margin:0;font-size:22px}.muted{color:var(--mut);margin:4px 0 0;font-size:12px
 .stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:0}.stat .muted{font-size:11px;margin:0}
 .stat strong{font-size:20px;line-height:1.2}.bad{color:var(--bad)}.good{color:var(--ok)}
 .table{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-size:13px}
-.tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(9,.75fr);min-width:1100px;align-items:center;padding:10px 10px;border-top:1px solid var(--line);gap:6px}
+.tr{display:grid;grid-template-columns:36px 1.9fr 1.3fr repeat(11,.75fr);min-width:1250px;align-items:center;padding:10px 10px;border-top:1px solid var(--line);gap:6px}
 .th{border:0;color:var(--mut);font-size:11px;text-transform:uppercase;background:#0e2244}
 .tr.done{background:rgba(74,222,128,.1)}.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qty{font-weight:700;color:var(--acc)}
 .bar{position:relative;height:16px;background:#0b1b3a;border-radius:99px;overflow:hidden}
