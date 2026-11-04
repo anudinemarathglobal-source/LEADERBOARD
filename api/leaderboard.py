@@ -18,6 +18,8 @@ FIELDS = {
     "remaining": (["remaining target"], None),
     "oudAlSalam": (["oud al salam count", "oud al salam"], "oud"),
     "bahrain": (["bahrain count", "bahrain"], "bahrain"),
+    "targetwon": (["target wons"], "target wons"),
+    "totalwon": (["total won", "converted"], "converted"),
     "totalBacklog": (["backlog"], None),
 }
 
