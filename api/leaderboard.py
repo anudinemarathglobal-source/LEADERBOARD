@@ -4,23 +4,23 @@ from http.server import BaseHTTPRequestHandler
 
 SHEET_ID = "1EBoTv168l52h7geL02ZmXwyx02vpEM4Aj61p4NBh2kM"
 SHEET_NAME = "HOURLY"
-EXCLUDE = {"agent", "night shift", "agents","NIGHT SHIFT", "total", "grand total"}
+EXCLUDE = {"", "total"}
 
 # field -> (exact header names to try in order, optional "contains" fallback)
 FIELDS = {
     "agent": (["agent"], None),
-    "targetLeads": (["target leads"], "target lead"),
-    "todayLeads": (["today leads", "today lead", "lead", "leads"], None),
     "target": (["today target"], None),
     "won": (["orders"], None),
     "fromLeads": (["order from leads"], None),
     "qty": (["qty"], None),
     "remaining": (["remaining target"], None),
+    "totalBacklog": (["backlog"], None),
+    "targetLeads": (["target leads"], "target lead"),
+    "todayLeads": (["today leads", "today lead", "lead", "leads"], None),
     "oudAlSalam": (["oud al salam count", "oud al salam"], "oud"),
     "bahrain": (["bahrain count", "bahrain"], "bahrain"),
-    "targetwon": (["target wons"], "target wons"),
-    "totalwon": (["total won", "converted"], "converted"),
-    "totalBacklog": (["backlog"], None),
+    "monthTarget": (["target wons", "target won", "month target"], "target won"),
+    "monthAchieved": (["converted", "month achieved"], "convert"),
 }
 
 
