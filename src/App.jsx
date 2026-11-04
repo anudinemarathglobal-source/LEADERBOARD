@@ -256,6 +256,8 @@ export default function App() {
         <Stat label="Bahrain" value={sum("bahrain")} />
         <Stat label="Qty" value={sum("qty")} />
         <Stat label="Remaining" value={sum("remaining")} warn />
+        <Stat label="Month Target" value={sum("target wons")} warn />
+        <Stat label="Month Achieved" value={sum("converted")} warn />
         <Stat label="Month backlog" value={sum("totalBacklog")} warn />
       </section>
 
@@ -286,6 +288,8 @@ export default function App() {
               <span>{r.oudAlSalam}</span>
               <span>{r.bahrain}</span>
               <span className={r.remaining > 0 ? "bad" : "good"}>{r.remaining}</span>
+              <span>{r.targetwons}</span>
+              <span>{r.converted}</span>
               <span>{r.totalBacklog}</span>
             </div>
           );
