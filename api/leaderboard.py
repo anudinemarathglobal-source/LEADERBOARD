@@ -10,7 +10,7 @@ EXCLUDE = {"", "total","night shift", "grand total", "agent", "emarath" "hourly 
 FIELDS = {
     "agent": (["agent"], None),
     "target": (["today target"], None),
-    "won": (["orders","total orders"], None),
+    "won": (["verified orders","orders"], None),
     "fromLeads": (["order from leads"], None),
     "qty": (["qty"], None),
     "remaining": (["remaining target"], None),
